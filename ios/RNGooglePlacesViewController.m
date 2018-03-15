@@ -6,7 +6,7 @@
 #import <React/RCTUtils.h>
 #import <React/RCTLog.h>
 
-@interface RNGooglePlacesViewController ()<GMSAutocompleteViewControllerDelegate>
+@interface RNGooglePlacesViewController ()<GMSAutocompleteViewControllerDelegate, GMSPlacePickerViewControllerDelegate>
 @end
 
 @implementation RNGooglePlacesViewController
@@ -15,7 +15,7 @@
 
 	RCTPromiseResolveBlock _resolve;
 	RCTPromiseRejectBlock _reject;
-	GMSPlacePicker *_placePicker;
+    GMSPlacePickerViewController *_placePicker;
 }
 
 - (instancetype)init 
@@ -50,19 +50,8 @@
 	_reject = reject;
 
 	GMSPlacePickerConfig *config = [[GMSPlacePickerConfig alloc] initWithViewport:bounds];
-    _placePicker = [[GMSPlacePicker alloc] initWithConfig:config];
-    [_placePicker pickPlaceWithCallback:^(GMSPlace *place, NSError *error) {
-        if (place) {
-            if (_resolve) {
-		        _resolve([NSMutableDictionary dictionaryWithGMSPlace:place]);
-		    }
-        } else if (error) {
-            _reject(@"E_PLACE_PICKER_ERROR", [error localizedDescription], nil);
-
-        } else {
-            _reject(@"E_USER_CANCELED", @"Search cancelled", nil);
-        }
-    }];
+    _placePicker = [[GMSPlacePickerViewController alloc] initWithConfig:config];
+    [_placePicker setDelegate:self];
 }
 
 
@@ -116,6 +105,22 @@
     UIViewController *topController = [UIApplication sharedApplication].delegate.window.rootViewController;
     while (topController.presentedViewController) { topController = topController.presentedViewController; }
     return topController;
+}
+
+- (void)placePicker:(nonnull GMSPlacePickerViewController *)viewController didPickPlace:(nonnull GMSPlace *)place {
+    if (place) {
+        if (_resolve) {
+            _resolve([NSMutableDictionary dictionaryWithGMSPlace:place]);
+        }
+    }
+}
+
+- (void)placePicker:(GMSPlacePickerViewController *)viewController didFailWithError:(NSError *)error {
+    _reject(@"E_PLACE_PICKER_ERROR", [error localizedDescription], nil);
+}
+
+- (void)placePickerDidCancel:(GMSPlacePickerViewController *)viewController {
+    _reject(@"E_USER_CANCELED", @"Search cancelled", nil);
 }
 
 @end
